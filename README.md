@@ -4,3 +4,4 @@
 
 Exercises
 - part0 Done
+- part1 Done
