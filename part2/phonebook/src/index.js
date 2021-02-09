@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom'
 import Filter from './components/Filter'
 import PersonForm from './components/PersonForm'
 import Persons from './components/Persons'
-import axios from 'axios'
+import personService from './services/persons'
 
 const App = () => {
   const [ persons, setPersons ] = useState([]) 
@@ -12,27 +12,25 @@ const App = () => {
   const [ filterName, setFilterName ] = useState('')
 
   useEffect(() => {
-
-    axios
-      .get('http://localhost:3001/persons')
-      .then(response => {     
-        setPersons(response.data)  
-      })
-
+    getAllPerson()
   }, [])
 
   const handleSubmit = (e) =>{
     e.preventDefault()
 
     const newObjName = { name: newName, number: newPhone }
+    const duplicatePerson = persons.filter(e => e.name.toLowerCase() === newName.toLowerCase())
+ 
+    if(duplicatePerson.length > 0){
+      const id = duplicatePerson[0].id
+      const confirm = window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)
 
-    if(persons.some(e => e.name.toLowerCase() === newName.toLowerCase())){
-      alert(`${newName} is already added to phonebook`)
+      if(confirm){
+        handleUpdatePerson(id, newObjName)
+      }
       
     }else{      
-      setPersons(persons.concat(newObjName).sort((a, b) => a.name.localeCompare(b.name)))
-      setNewName('')
-      setNewPhone('')
+      handleCreatePerson(newObjName)
     }
   }
 
@@ -47,6 +45,42 @@ const App = () => {
   const handleChangeFilterName = (e) =>{
     setFilterName(e.target.value.toLowerCase())
   }
+
+  const getAllPerson = () =>{
+    personService
+    .getAll()
+    .then(data => setPersons(data.sort((a, b) => a.name.localeCompare(b.name))))
+  }
+
+  const handleCreatePerson = (newObjName) =>{
+    personService
+    .create(newObjName)
+    .then(data => setPersons(persons.concat(data).sort((a, b) => a.name.localeCompare(b.name)))) 
+
+    setNewName('')
+    setNewPhone('')
+  }
+
+  const handleUpdatePerson = (id, newObjName) =>{
+      personService
+      .update(id, newObjName) 
+      .then(data => setPersons(persons.map(p => p.id !== id ? p : data)))
+
+      setNewName('')
+      setNewPhone('')
+  }
+
+  const handleDeletePerson = (id) =>{
+    const deleteUser = persons.filter(p => p.id === id)
+    const confirm = window.confirm(`Delete ${deleteUser[0].name}`)
+
+    if(confirm){
+      personService
+      .remove(id)
+      .then(setPersons(persons.filter(p => p.id !== id)))    
+    }
+  }
+
 
   const personsToShow = filterName.length > 0
     ? persons.filter(e => e.name.toLowerCase().startsWith(filterName))
@@ -70,7 +104,10 @@ const App = () => {
       
       <h3>Numbers</h3>
 
-      <Persons personsToShow={personsToShow} />
+      <Persons 
+        personsToShow={personsToShow} 
+        handleDeletePerson={handleDeletePerson}
+        />
 
     </div>
   )
